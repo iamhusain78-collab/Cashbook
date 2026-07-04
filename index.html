@@ -1,0 +1,247 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Cashbook v4 Ultimate</title>
+<style>
+:root{--bg:#F7F6F2;--card:#FFF;--text:#0B0E12;--muted:#6B7280;--border:#E5E7EB;--emerald:#0C8A5F;--emerald-d:#0a6b48;--rose:#E11D48;--glass:rgba(255,255,255,0.8)}
+[data-theme="dark"]{--bg:#0B0E12;--card:#151B23;--text:#F7F6F2;--muted:#9CA3AF;--border:#2D3748;--glass:rgba(21,27,35,0.8)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{margin:0;background:var(--bg);color:var(--text);font-feature-settings:"tnum";overflow:hidden}
+.tabular{font-variant-numeric:tabular-nums}
+#app{display:flex;flex-direction:column;height:100vh;max-width:600px;margin:0 auto;position:relative}
+header{padding:16px;background:var(--bg);z-index:10;border-bottom:1px solid var(--border)}
+h1{font-size:24px;margin:0;font-weight:750}
+h2{font-size:18px;margin:0 0 8px;font-weight:700}
+.view{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;display:none}
+.view.active{display:block}
+.card{background:var(--card);border-radius:24px;padding:16px;margin-bottom:16px;box-shadow:0 4px 12px rgba(0,0,0,0.05)}
+.passbook{background:linear-gradient(135deg,#0C8A5F,#0a6b48);color:#FFF;padding:24px;border-radius:24px}
+.passbook h3{margin:0 0 8px;opacity:0.9;font-weight:500;font-size:14px}
+.passbook .amt{font-size:36px;font-weight:750;margin-bottom:16px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+.row:last-child{border:none}
+.btn{background:var(--emerald);color:#FFF;border:none;padding:12px 24px;border-radius:16px;font-size:16px;font-weight:600;cursor:pointer;width:100%}
+.btn.sec{background:var(--card);color:var(--text);border:1px solid var(--border)}
+.pill{padding:8px 16px;border-radius:16px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-weight:600}
+.pill.active{background:var(--emerald);color:#FFF;border-color:var(--emerald)}
+input,select,textarea{width:100%;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);font-size:16px;margin-bottom:12px}
+nav{display:flex;justify-content:space-around;padding:8px;background:var(--glass);backdrop-filter:blur(10px);border-top:1px solid var(--border)}
+nav .nav-item{display:flex;flex-direction:column;align-items:center;color:var(--muted);font-size:10px;cursor:pointer;padding:4px}
+nav .nav-item.active{color:var(--emerald)}
+nav svg{width:24px;height:24px;stroke-width:2.4}
+.fab{position:absolute;bottom:72px;right:16px;background:var(--emerald);color:#FFF;border-radius:28px;padding:16px;box-shadow:0 4px 12px rgba(0,0,0,0.3);cursor:pointer;font-weight:700;z-index:20}
+.sheet{position:absolute;bottom:0;left:0;right:0;background:var(--card);padding:24px;border-radius:24px 24px 0 0;transform:translateY(100%);transition:transform 0.3s;z-index:30;max-height:80vh;overflow-y:auto}
+.sheet.open{transform:translateY(0)}
+.overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);opacity:0;pointer-events:none;transition:opacity 0.3s;z-index:25}
+.overlay.open{opacity:1;pointer-events:auto}
+.snackbar{position:absolute;bottom:80px;left:16px;right:16px;background:#333;color:#FFF;padding:12px;border-radius:8px;display:none;z-index:40}
+.in{color:var(--emerald)}.out{color:var(--rose)}
+.chip{display:inline-block;padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin:4px 4px 0 0;font-size:12px;cursor:pointer}
+</style></head><body data-theme="light">
+<div id="app">
+  <header><h1 id="hdr-title">Cashbook</h1></header>
+  <div id="view-home" class="view active"></div>
+  <div id="view-books" class="view"></div>
+  <div id="view-parties" class="view"></div>
+  <div id="view-analytics" class="view"></div>
+  <div id="view-settings" class="view"></div>
+  <div class="fab" onclick="openSheet('entry')">+ Entry</div>
+  <div class="overlay" id="overlay" onclick="closeSheet()"></div>
+  <div class="sheet" id="sheet-entry"></div>
+  <div class="sheet" id="sheet-transfer"></div>
+  <div class="snackbar" id="snackbar"></div>
+  <nav>
+    <div class="nav-item active" onclick="nav('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Home</div>
+    <div class="nav-item" onclick="nav('books')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Books</div>
+    <div class="nav-item" onclick="nav('parties')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>Parties</div>
+    <div class="nav-item" onclick="nav('analytics')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Stats</div>
+    <div class="nav-item" onclick="nav('settings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</div>
+  </nav>
+</div>
+<script>
+"use strict";
+(function(){
+const $ = s => document.querySelector(s);
+const esc = s => String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uuid = () => crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{let r=Math.random()*16|0,v=c=='x'?r:r&0x3|0x8;return v.toString(16)});
+const fmtC = c => (c<0?'-':'') + Math.abs(c/100).toFixed(2);
+const strC = s => { let m = String(s).match(/-?\d+(\.\d{1,2})?/); return m ? Math.round(parseFloat(m[0])*100) : 0; }
+
+let S = {schema:4, seq:1, settings:{currency:'$', theme:'light', lastBook:'', accOpening:{cash:0,bank:0}, pinHash:''}, books:[], entries:[], transfers:[], parties:[], trash:[]};
+let undoTimeout = null;
+
+// --- IndexedDB Wrapper ---
+const DB = {
+  get: (k) => new Promise(res => {
+    try {
+      let r = indexedDB.open('cashbook', 1);
+      r.onsuccess = e => { let db = e.target.result; if(!db.objectStoreNames.contains('kv')) return res(localStorage.getItem(k)); let tx = db.transaction('kv','readonly').objectStore('kv').get(k); tx.onsuccess = e => res(e.target.result?e.target.result.value:localStorage.getItem(k)); };
+      r.onerror = () => res(localStorage.getItem(k));
+      r.onupgradeneeded = e => { let db = e.target.result; if(!db.objectStoreNames.contains('kv')) db.createObjectStore('kv'); };
+    } catch(e) { res(localStorage.getItem(k)); }
+  }),
+  set: (k,v) => new Promise(res => {
+    try {
+      let r = indexedDB.open('cashbook', 1);
+      r.onsuccess = e => { let db = e.target.result; if(!db.objectStoreNames.contains('kv')) { localStorage.setItem(k,v); return res(); } db.transaction('kv','readwrite').objectStore('kv').put(v,k); res(); };
+      r.onerror = () => { localStorage.setItem(k,v); res(); };
+      r.onupgradeneeded = e => { let db = e.target.result; if(!db.objectStoreNames.contains('kv')) db.createObjectStore('kv'); };
+    } catch(e) { localStorage.setItem(k,v); res(); }
+  })
+};
+
+// --- Core Logic ---
+const calcBals = () => {
+  let c = S.settings.accOpening.cash, b = S.settings.accOpening.bank;
+  S.entries.forEach(e => { if(e.mode==='Cash') c += (e.type==='in'?e.amount:-e.amount); else b += (e.type==='in'?e.amount:-e.amount); });
+  S.transfers.forEach(t => { if(t.dir==='c2b'){c-=t.amount;b+=t.amount;} else {b-=t.amount;c+=t.amount;} });
+  return {cash:c, bank:b};
+};
+const bookNet = bId => { let b=S.books.find(x=>x.id===bId); if(!b)return 0; return b.opening + S.entries.filter(e=>e.bookId===bId).reduce((s,e)=>s+(e.type==='in'?e.amount:-e.amount),0); };
+
+// --- Routing ---
+window.nav = (t) => {
+  $('.view.active').classList.remove('active');
+  $('#view-'+t).classList.add('active');
+  $$('.nav-item').forEach(n=>n.classList.remove('active'));
+  $$('.nav-item')[$$('.nav-item').length-1 - ['settings','analytics','parties','books','home'].indexOf(t)].classList.add('active'); // Approximate mapping for brevity
+  $('#hdr-title').innerText = t.charAt(0).toUpperCase()+t.slice(1);
+  render[t]();
+};
+
+// --- Renderers ---
+const render = {
+  home: () => {
+    let b = calcBals();
+    let today = new Date().toISOString().split('T')[0];
+    let tEntries = S.entries.filter(e=>new Date(e.ts).toISOString().split('T')[0]===today);
+    let tIn = tEntries.filter(e=>e.type==='in').reduce((s,e)=>s+e.amount,0);
+    let tOut = tEntries.filter(e=>e.type==='out').reduce((s,e)=>s+e.amount,0);
+    let open = b.cash + b.bank - tIn + tOut;
+    $('#view-home').innerHTML = `
+      <div class="passbook"><h3>Total Balance</h3><div class="amt tabular">${fmtC(b.cash+b.bank)}</div>
+      <div class="row" style="border-color:rgba(255,255,255,0.2)"><span>Cash in hand</span><b class="tabular">${fmtC(b.cash)}</b></div>
+      <div class="row" style="border:none"><span>Bank account</span><b class="tabular">${fmtC(b.bank)}</b></div></div>
+      <div class="card"><h2>Today's Roznamcha</h2>
+      <div class="row"><span>Opening</span><b class="tabular">${fmtC(open)}</b></div>
+      <div class="row"><span class="in">In</span><b class="in tabular">${fmtC(tIn)}</b></div>
+      <div class="row"><span class="out">Out</span><b class="out tabular">${fmtC(tOut)}</b></div>
+      <div class="row" style="font-size:18px"><span><b>Closing</b></span><b class="tabular">${fmtC(b.cash+b.bank)}</b></div>
+      <button class="btn sec" onclick="shareRoznamcha()" style="margin-top:8px">Share Image</button></div>
+      <div class="card"><h2>Recent Activity</h2>
+      ${S.entries.slice(-5).reverse().map(e=>`<div class="row"><span>${esc(e.note)}</span><b class="${e.type} tabular">${e.type==='in'?'+':'-'}${fmtC(e.amount)}</b></div>`).join('')||'<div class="muted">No entries yet</div>'}
+      <button class="btn sec" onclick="openSheet('transfer')" style="margin-top:8px">Transfer Cash ⇄ Bank</button></div>`;
+  },
+  books: () => {
+    $('#view-books').innerHTML = `<div class="card"><h2>Books</h2>
+      ${S.books.map(b=>`<div class="row" onclick="nav('home')"><span>${esc(b.name)}</span><b class="tabular">${fmtC(bookNet(b.id))}</b></div>`).join('')}
+      <button class="btn sec" onclick="addBook()">Add Book</button></div>`;
+  },
+  parties: () => { $('#view-parties').innerHTML = `<div class="card"><h2>Parties</h2><button class="btn" onclick="addParty()">Add Party</button></div>`; },
+  analytics: () => { $('#view-analytics').innerHTML = `<div class="card"><h2>Analytics</h2><p>Global KPIs and charts appear here.</p></div>`; },
+  settings: () => {
+    $('#view-settings').innerHTML = `<div class="card"><h2>Settings</h2>
+      <label>Theme</label><select onchange="setTheme(this.value)"><option value="light">Light</option><option value="dark" ${S.settings.theme==='dark'?'selected':''}>Dark</option></select>
+      <label>Opening Cash (cents)</label><input type="number" value="${S.settings.accOpening.cash}" onchange="S.settings.accOpening.cash=parseInt(this.value)||0;save();nav('settings')">
+      <button class="btn sec" onclick="exportJSON()">Export Backup</button>
+      <button class="btn sec" onclick="togglePin()" style="margin-top:8px">${S.settings.pinHash?'Remove':'Set'} PIN</button>
+      <button class="btn sec" onclick="registerBio()" style="margin-top:8px">Enable Biometric</button></div>`;
+  }
+};
+
+// --- Actions ---
+window.openSheet = (type) => { $('#overlay').classList.add('open'); if(type==='entry'){ $('#sheet-entry').classList.add('open'); $('#sheet-entry').innerHTML = entryForm(); } else if(type==='transfer'){ $('#sheet-transfer').classList.add('open'); $('#sheet-transfer').innerHTML = transferForm(); } };
+window.closeSheet = () => { $('.overlay').classList.remove('open'); $$('.sheet').forEach(s=>s.classList.remove('open')); };
+const entryForm = () => `
+  <h2>Add Entry</h2>
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <div class="pill ${window._tmp_type==='out'?'active':''}" onclick="window._tmp_type='out';$(\"#sheet-entry\").innerHTML=entryForm()">OUT</div>
+    <div class="pill ${window._tmp_type!=='out'?'active':''}" onclick="window._tmp_type='in';$(\"#sheet-entry\").innerHTML=entryForm()">IN</div>
+  </div>
+  <input type="text" placeholder="Amount" id="e-amt">
+  <input type="text" placeholder="Note (Required)" id="e-note">
+  <div style="margin-bottom:12px"><span class="chip">Salary</span><span class="chip">Groceries</span><span class="chip">Rent</span></div>
+  <select id="e-book">${S.books.map(b=>`<option value="${b.id}" ${b.id===S.settings.lastBook?'selected':''}>${esc(b.name)}</option>`).join('')}</select>
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <div class="pill active" onclick="this.parentNode.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));this.classList.add('active');window._tmp_mode='Cash'">Cash</div>
+    <div class="pill" onclick="this.parentNode.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));this.classList.add('active');window._tmp_mode='Online'">Online</div>
+  </div>
+  <button class="btn" onclick="saveEntry()">Save Entry</button>`;
+const transferForm = () => `<h2>Transfer</h2><input type="number" placeholder="Amount" id="t-amt"><div style="display:flex;gap:8px"><div class="pill" onclick="window._tmp_dir='c2b';this.classList.add('active')">Cash ⇄ Bank</div><div class="pill" onclick="window._tmp_dir='b2c';this.classList.add('active')">Bank ⇄ Cash</div></div><button class="btn" onclick="saveTransfer()">Transfer</button>`;
+
+window.saveEntry = () => {
+  let amt = strC($('#e-amt').value);
+  let note = $('#e-note').value.trim();
+  if(!amt || !note) return showSnack('Amount and Note required');
+  let type = window._tmp_type || 'in';
+  let mode = window._tmp_mode || 'Cash';
+  let bookId = $('#e-book').value;
+  
+  // Smart Duplicate
+  if(S.entries.some(e=>e.amount===amt && e.note===note && new Date(e.ts).toDateString()===new Date().toDateString())) {
+    if(!confirm('Similar entry found today. Save anyway?')) return;
+  }
+  
+  S.entries.push({id:uuid(), bookId, type, amount:amt, mode, note, ts:Date.now(), created:Date.now()});
+  S.settings.lastBook = bookId;
+  save(); closeSheet(); nav('home'); showSnack('Entry saved');
+};
+window.saveTransfer = () => {
+  let amt = strC($('#t-amt').value);
+  if(!amt) return;
+  S.transfers.push({id:uuid(), dir:window._tmp_dir||'c2b', amount:amt, ts:Date.now(), note:''});
+  save(); closeSheet(); nav('home');
+};
+window.addBook = () => { let n = prompt('Book Name'); if(n){ S.books.push({id:uuid(), name:n, opening:0, created:Date.now()}); save(); nav('books'); } };
+window.addParty = () => { let n = prompt('Party Name'); if(n){ S.parties.push({id:uuid(), name:n}); save(); nav('parties'); } };
+window.setTheme = (t) => { S.settings.theme=t; document.body.dataset.theme=t; save(); };
+window.exportJSON = () => { let blob = new Blob([JSON.stringify(S)], {type:'application/json'}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='cashbook_backup.json'; a.click(); };
+window.togglePin = () => { if(S.settings.pinHash){ S.settings.pinHash=''; save(); nav('settings'); } else { let p=prompt('Set PIN'); if(p) { S.settings.pinHash = simpleHash(p); save(); nav('settings'); } } };
+const simpleHash = s => { let h=0; for(let i=0;i<s.length;i++) h=(h<<5)-h+s.charCodeAt(i)|0; return String(h); };
+window.registerBio = async () => {
+  if(!window.PublicKeyCredential) return alert('Biometrics not supported');
+  try {
+    let cred = await navigator.credentials.create({publicKey: {challenge: new Uint8Array(16), rp:{name:'Cashbook'}, user:{id:new Uint8Array(16), name:'user'}, pubKeyCredParams:[{type:'public-key',alg:-7}]}});
+    S.settings.bioCred = btoa(String.fromCharCode(...new Uint8Array(cred.rawId))); save(); alert('Biometric enabled');
+  } catch(e){ alert('Failed: '+e.message); }
+};
+window.shareRoznamcha = () => {
+  let c = document.createElement('canvas'); c.width=600; c.height=400; let x = c.getContext('2d');
+  x.fillStyle='#0C8A5F'; x.fillRect(0,0,600,400); x.fillStyle='#FFF'; x.font='bold 32px sans-serif';
+  x.fillText('Roznamcha Report', 20, 50); x.font='16px sans-serif';
+  let b=calcBals(); x.fillText('Balance: '+fmtC(b.cash+b.bank), 20, 100);
+  let a=document.createElement('a'); a.href=c.toDataURL('image/png'); a.download='roznamcha.png'; a.click();
+};
+const showSnack = (msg) => { let s=$('#snackbar'); s.innerText=msg; s.style.display='block'; setTimeout(()=>s.style.display='none', 3000); };
+
+// --- Persistence ---
+const save = async () => { S.seq++; await DB.set('state', JSON.stringify(S)); };
+
+// --- Init ---
+(async function init(){
+  let saved = await DB.get('state');
+  if(saved){ try { S = JSON.parse(saved); if(S.schema < 4) S.schema=4; } catch(e){} }
+  if(S.books.length===0) S.books.push({id:uuid(), name:'Default Book', opening:0, created:Date.now()});
+  if(!S.settings.lastBook) S.settings.lastBook = S.books[0].id;
+  document.body.dataset.theme = S.settings.theme || 'light';
+  nav('home');
+})();
+
+// --- Test Harness ---
+window.runTests = () => {
+  let pass = 0, fail = 0;
+  const assert = (c, m) => { c ? pass++ : fail++; console.log((c?'PASS':'FAIL')+': '+m); };
+  assert(/^([a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12})$/.test(uuid()), 'UUID v4 format');
+  assert(strC("10.50") === 1050, 'Cents math 1');
+  assert(strC("$1,000.5") === 100050, 'Cents math 2');
+  assert(fmtC(-1050) === '-10.50', 'Format negative cents');
+  assert(esc('<script>') === '&lt;script&gt;', 'XSS Escape');
+  S.entries.push({id:uuid(), bookId:S.books[0].id, type:'in', amount:1000, mode:'Cash', note:'Test', ts:Date.now()});
+  let b = calcBals(); assert(b.cash === S.settings.accOpening.cash + 1000, 'Balance routing Cash');
+  S.transfers.push({id:uuid(), dir:'c2b', amount:500, ts:Date.now()});
+  b = calcBals(); assert(b.cash === S.settings.accOpening.cash + 500, 'Transfer deduction');
+  assert(b.bank === S.settings.accOpening.bank + 500, 'Transfer addition');
+  console.log(`Tests: ${pass} passed, ${fail} failed`);
+};
+
+})();
+</script></body></html>
